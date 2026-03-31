@@ -25,6 +25,8 @@ if (!fs.existsSync(uploadsDir)) {
 const db = new Database("events.db");
 db.pragma("foreign_keys = ON");
 const JWT_SECRET = process.env.JWT_SECRET || "super-secret-key";
+const ADMIN_MOBILE = "8530469718";
+const ADMIN_PASSWORD = "627123";
 
 // Initialize Database
 db.exec(`
@@ -146,12 +148,15 @@ const upload = multer({
   },
 });
 
-// Seed Admin if not exists
-const adminExists = db.prepare("SELECT * FROM users WHERE role = 'admin'").get();
-if (!adminExists) {
-  const hashedPassword = bcrypt.hashSync("admin123", 10);
+// Ensure admin credentials are set to configured values.
+const hashedAdminPassword = bcrypt.hashSync(ADMIN_PASSWORD, 10);
+const existingAdmin: any = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
+if (!existingAdmin) {
   db.prepare("INSERT INTO users (firstName, lastName, mobile, password, role) VALUES (?, ?, ?, ?, ?)")
-    .run("Admin", "User", "9999999999", hashedPassword, "admin");
+    .run("Admin", "User", ADMIN_MOBILE, hashedAdminPassword, "admin");
+} else {
+  db.prepare("UPDATE users SET mobile = ?, password = ? WHERE id = ?")
+    .run(ADMIN_MOBILE, hashedAdminPassword, existingAdmin.id);
 }
 
 async function startServer() {
