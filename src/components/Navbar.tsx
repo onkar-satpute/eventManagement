@@ -24,19 +24,19 @@ export default function Navbar() {
     <nav className="bg-charcoal/80 backdrop-blur-md border-b border-gold/20 fixed top-0 left-0 right-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
-          <div className="flex items-center relative w-24">
-            <Link to="/" className="absolute top-1/2 -translate-y-1/2 left-0">
+          <div className="flex items-center w-20 sm:w-24">
+            <Link to="/" className="block">
               <img 
                 src="https://raw.githubusercontent.com/shrinivaskumari/bhimjayanti/main/slideimages/logo.png" 
                 alt="Logo" 
-                className="h-24 w-auto z-10 drop-shadow-md brightness-110 contrast-125"
+                className="h-14 sm:h-16 md:h-20 w-auto z-10 drop-shadow-md brightness-110 contrast-125"
                 referrerPolicy="no-referrer"
               />
             </Link>
           </div>
 
           {/* Desktop Menu */}
-          <div className="hidden md:flex items-center space-x-8">
+          <div className="hidden md:flex items-center space-x-6">
             {navLinks.map((link) => (
               <Link
                 key={link.name}
@@ -55,7 +55,7 @@ export default function Navbar() {
               </Link>
             )}
             
-            <div className="flex items-center space-x-4 border-l border-gold/20 pl-8">
+            <div className="flex items-center space-x-3 border-l border-gold/20 pl-6">
               {user ? (
                 <div className="flex items-center space-x-4">
                   <span className="text-sm text-cream/70 flex items-center">

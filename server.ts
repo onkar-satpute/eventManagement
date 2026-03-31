@@ -154,15 +154,15 @@ if (!adminExists) {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT || 3000);
 
   app.use(express.json());
   // Serve uploaded files with headers that allow framing in the preview environment
-app.use("/uploads", (req, res, next) => {
-  res.setHeader("X-Frame-Options", "SAMEORIGIN");
-  res.setHeader("Content-Security-Policy", "frame-ancestors 'self' https://ai.studio.google.com https://*.run.app");
-  next();
-}, express.static(path.join(process.cwd(), "public", "uploads")));
+  app.use("/uploads", (req, res, next) => {
+    res.setHeader("X-Frame-Options", "SAMEORIGIN");
+    res.setHeader("Content-Security-Policy", "frame-ancestors 'self' https://ai.studio.google.com https://*.run.app");
+    next();
+  }, express.static(path.join(process.cwd(), "public", "uploads")));
 
   // Auth Middleware
   const authenticateToken = (req: any, res: any, next: any) => {
@@ -440,8 +440,14 @@ app.use("/uploads", (req, res, next) => {
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
+    const hmrPort = Number(process.env.HMR_PORT || 24678);
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: {
+          port: hmrPort,
+        },
+      },
       appType: "spa",
     });
     app.use(vite.middlewares);

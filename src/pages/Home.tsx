@@ -68,7 +68,7 @@ export default function Home() {
   return (
     <div className="min-h-screen">
       {/* Hero Slider */}
-      <section className="relative h-[300px] sm:h-[400px] lg:h-[600px] overflow-hidden bg-charcoal -mt-16">
+      <section className="relative h-[260px] sm:h-[380px] lg:h-[540px] overflow-hidden bg-charcoal">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentSlide}
@@ -79,17 +79,17 @@ export default function Home() {
             className="absolute inset-0"
           >
             <div
-              className="absolute inset-0 bg-contain md:bg-cover bg-center bg-no-repeat"
+              className="absolute inset-0 bg-cover bg-center bg-no-repeat"
               style={{ backgroundImage: `url(${slides[currentSlide].image})` }}
             >
               <div className="absolute inset-0 bg-charcoal/40 md:bg-charcoal/50" />
             </div>
-            <div className="relative h-full flex flex-col items-center justify-end text-center text-cream px-4 pb-12 md:pb-24">
+            <div className="relative h-full flex flex-col items-center justify-end text-center text-cream px-4 pb-8 sm:pb-12 md:pb-20">
               <motion.h1
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.5 }}
-                className="text-lg md:text-4xl font-bold mb-2 md:mb-4 max-w-4xl italic px-4 drop-shadow-lg"
+                className="text-base sm:text-xl md:text-4xl font-bold mb-2 md:mb-4 max-w-4xl italic px-2 sm:px-4 drop-shadow-lg"
               >
                 "{slides[currentSlide].title}"
               </motion.h1>
@@ -121,24 +121,24 @@ export default function Home() {
         
         <button
           onClick={() => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length)}
-          className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 p-1 md:p-2 bg-gold/20 hover:bg-gold/40 rounded-full text-cream transition z-10"
+          className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 p-1.5 md:p-2 bg-gold/20 hover:bg-gold/40 rounded-full text-cream transition z-10"
         >
-          <ChevronLeft className="w-6 h-6 md:w-8 h-8" />
+          <ChevronLeft className="w-5 h-5 md:w-8 md:h-8" />
         </button>
         <button
           onClick={() => setCurrentSlide((prev) => (prev + 1) % slides.length)}
-          className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 p-1 md:p-2 bg-gold/20 hover:bg-gold/40 rounded-full text-cream transition z-10"
+          className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 p-1.5 md:p-2 bg-gold/20 hover:bg-gold/40 rounded-full text-cream transition z-10"
         >
-          <ChevronRight className="w-6 h-6 md:w-8 h-8" />
+          <ChevronRight className="w-5 h-5 md:w-8 md:h-8" />
         </button>
       </section>
 
       {/* Current Events Section */}
-      <section className="py-20 bg-charcoal">
+      <section className="py-12 md:py-16 bg-charcoal">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-end mb-12">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-8 md:mb-10">
             <div>
-              <h2 className="text-3xl font-bold text-cream">Current Events</h2>
+              <h2 className="text-2xl md:text-3xl font-bold text-cream">Current Events</h2>
               <p className="text-gold mt-2">Don't miss out on these exciting opportunities</p>
             </div>
             <Link to="/category/Games" className="text-gold font-semibold flex items-center hover:text-cream transition">
@@ -146,7 +146,7 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {events.map((event) => (
               <motion.div
                 key={event.id}
@@ -213,9 +213,9 @@ export default function Home() {
       </section>
 
       {/* Past Events Gallery Section */}
-      <section className="py-20 bg-gray-dark">
+      <section className="py-12 md:py-16 bg-gray-dark">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-cream mb-12 text-center">Past Event Highlights</h2>
+          <h2 className="text-2xl md:text-3xl font-bold text-cream mb-8 md:mb-10 text-center">Past Event Highlights</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {pastEvents.map((img, i) => (
               <div 
@@ -252,12 +252,12 @@ export default function Home() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="relative max-w-5xl w-full max-h-[90vh] flex items-center justify-center"
+              className="relative max-w-5xl w-full max-h-[90vh] flex items-center justify-center pt-8 sm:pt-0"
               onClick={(e) => e.stopPropagation()}
             >
               <button
                 onClick={() => setSelectedImage(null)}
-                className="absolute -top-12 right-0 text-cream hover:text-gold transition p-2"
+                className="absolute top-0 right-0 sm:-top-12 text-cream hover:text-gold transition p-2"
               >
                 <X className="w-8 h-8" />
               </button>

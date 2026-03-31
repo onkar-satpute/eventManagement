@@ -33,9 +33,9 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-64px)] flex items-center justify-center bg-charcoal px-4">
-      <div className="max-w-md w-full bg-gray-dark rounded-2xl shadow-2xl p-8 border border-gold/10">
-        <div className="text-center mb-8">
+    <div className="min-h-[calc(100vh-64px)] flex items-center justify-center bg-charcoal px-4 py-8 sm:py-10">
+      <div className="max-w-md w-full bg-gray-dark rounded-2xl shadow-2xl p-6 sm:p-8 border border-gold/10">
+        <div className="text-center mb-6 sm:mb-8">
           <img 
             src="https://raw.githubusercontent.com/shrinivaskumari/bhimjayanti/main/slideimages/logo.png" 
             alt="Logo" 
@@ -46,7 +46,7 @@ export default function Login() {
           <p className="text-gold mt-2">Login to manage your events</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="block text-sm font-medium text-cream/80 mb-1">Mobile Number</label>
             <div className="relative">
@@ -86,7 +86,7 @@ export default function Login() {
           </button>
         </form>
 
-        <p className="text-center mt-8 text-gold">
+        <p className="text-center mt-6 sm:mt-8 text-gold">
           Don't have an account?{" "}
           <Link to="/register" className="text-cream font-bold hover:underline">
             Sign In

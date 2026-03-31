@@ -5,7 +5,6 @@ import { useAuth } from "../lib/AuthContext";
 import { toast } from "sonner";
 import { Calendar, Users, Clock, User, Phone, X, FileText, Eye } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import PdfViewerModal from "../components/PdfViewerModal";
 
 export default function EventCategory() {
   const { category } = useParams<{ category: string }>();
@@ -13,7 +12,6 @@ export default function EventCategory() {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
-  const [selectedPdf, setSelectedPdf] = useState<{ url: string; title: string } | null>(null);
   const [teamName, setTeamName] = useState("");
   const [players, setPlayers] = useState<any[]>([]);
   const { user, token } = useAuth();
@@ -125,9 +123,9 @@ export default function EventCategory() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="mb-12">
-        <h1 className="text-4xl font-bold text-cream">{category} Events</h1>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+      <div className="mb-8 md:mb-10">
+        <h1 className="text-3xl md:text-4xl font-bold text-cream">{category} Events</h1>
         <p className="text-gold mt-2">Explore and join our latest {category?.toLowerCase()} activities</p>
       </div>
 
@@ -136,7 +134,7 @@ export default function EventCategory() {
           <p className="text-gold/50 text-xl">No events found in this category.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {events.map((event) => (
             <motion.div
               key={event.id}
@@ -144,7 +142,7 @@ export default function EventCategory() {
               animate={{ opacity: 1, y: 0 }}
               className="bg-gray-dark rounded-xl shadow-2xl overflow-hidden border border-gold/10 flex flex-col"
             >
-              <div className="relative h-56">
+              <div className="relative h-52 sm:h-56">
                 <img
                   src={event.image}
                   alt={event.name}
@@ -158,8 +156,8 @@ export default function EventCategory() {
                   </div>
                 )}
               </div>
-              <div className="p-6 flex-grow flex flex-col">
-                <h3 className="text-2xl font-bold text-cream mb-4">{event.name}</h3>
+              <div className="p-5 sm:p-6 flex-grow flex flex-col">
+                <h3 className="text-xl sm:text-2xl font-bold text-cream mb-4">{event.name}</h3>
                 
                 <div className="space-y-3 mb-6 flex-grow">
                   <div className="flex items-center text-cream/80">
@@ -180,17 +178,18 @@ export default function EventCategory() {
                   </div>
                   {event.isRegistered && event.rules_pdf && (
                     <div className="mt-4 p-3 bg-gold/10 border border-gold/20 rounded-lg flex items-center justify-between">
-                      <div className="flex items-center text-gold">
+                      <div className="flex items-center text-gold min-w-0">
                         <FileText className="w-4 h-4 mr-2" />
                         <span className="text-xs font-bold uppercase tracking-wider">Event Rules</span>
                       </div>
-                      <button 
-                        onClick={() => setSelectedPdf({ url: event.rules_pdf, title: event.name })}
+                      <a
+                        href={event.rules_pdf}
+                        target="_self"
                         className="flex items-center text-cream hover:text-gold transition text-xs font-bold"
                       >
                         <Eye className="w-4 h-4 mr-1" />
                         View Rules
-                      </button>
+                      </a>
                     </div>
                   )}
                 </div>
@@ -212,7 +211,7 @@ export default function EventCategory() {
                             ? 'Slots Full' 
                             : 'Registration Open'}
                     </span>
-                    <span className="text-sm text-cream/60">
+                    <span className="text-xs sm:text-sm text-cream/60">
                       {event.max_teams - event.registrationCount} slots left
                     </span>
                   </div>
@@ -249,9 +248,9 @@ export default function EventCategory() {
               exit={{ scale: 0.9, opacity: 0 }}
               className="bg-gray-dark rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-gold/20 shadow-2xl"
             >
-              <div className="p-6 border-b border-gold/10 flex justify-between items-center bg-charcoal">
+              <div className="p-4 sm:p-6 border-b border-gold/10 flex justify-between items-center bg-charcoal">
                 <div>
-                  <h3 className="text-2xl font-bold text-cream">Register Team</h3>
+                  <h3 className="text-xl sm:text-2xl font-bold text-cream">Register Team</h3>
                   <p className="text-gold/60 text-sm">{selectedEvent.name}</p>
                 </div>
                 <button onClick={() => setSelectedEvent(null)} className="text-gold hover:text-cream transition">
@@ -259,7 +258,7 @@ export default function EventCategory() {
                 </button>
               </div>
               
-              <form onSubmit={handleRegisterSubmit} className="p-8 overflow-y-auto flex-grow bg-charcoal space-y-8">
+              <form onSubmit={handleRegisterSubmit} className="p-4 sm:p-6 md:p-8 overflow-y-auto flex-grow bg-charcoal space-y-6 sm:space-y-8">
                 <div className="space-y-2">
                   <label className="block text-sm font-bold text-gold uppercase tracking-wider">Team Name (Optional)</label>
                   <input
@@ -274,7 +273,7 @@ export default function EventCategory() {
                 <div className="space-y-6">
                   <h4 className="text-lg font-bold text-cream border-b border-gold/10 pb-2">Player Details</h4>
                   {players.map((player, idx) => (
-                    <div key={idx} className="bg-gray-dark/50 p-6 rounded-2xl border border-gold/5 space-y-4">
+                    <div key={idx} className="bg-gray-dark/50 p-4 sm:p-6 rounded-2xl border border-gold/5 space-y-4">
                       <div className="flex items-center space-x-2 text-gold mb-2">
                         <User className="w-4 h-4" />
                         <span className="text-xs font-bold uppercase tracking-widest">Player {idx + 1} {idx === 0 ? "(Captain)" : ""}</span>
@@ -323,13 +322,6 @@ export default function EventCategory() {
           </div>
         )}
       </AnimatePresence>
-
-      <PdfViewerModal
-        isOpen={!!selectedPdf}
-        onClose={() => setSelectedPdf(null)}
-        pdfUrl={selectedPdf?.url || ""}
-        title={selectedPdf?.title || ""}
-      />
     </div>
   );
 }

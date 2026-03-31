@@ -33,9 +33,9 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-64px)] flex items-center justify-center bg-black px-4">
-      <div className="max-w-md w-full bg-gray-900 rounded-2xl shadow-2xl p-8 border border-white/10">
-        <div className="text-center mb-8">
+    <div className="min-h-[calc(100vh-64px)] flex items-center justify-center bg-black px-4 py-8 sm:py-10">
+      <div className="max-w-md w-full bg-gray-900 rounded-2xl shadow-2xl p-6 sm:p-8 border border-white/10">
+        <div className="text-center mb-6 sm:mb-8">
           <div className="bg-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
             <ShieldAlert className="w-8 h-8 text-black" />
           </div>
@@ -43,7 +43,7 @@ export default function AdminLogin() {
           <p className="text-gray-400 mt-2">Restricted access for administrators</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-1">Admin Mobile</label>
             <div className="relative">

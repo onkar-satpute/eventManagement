@@ -150,14 +150,14 @@ export default function AdminDashboard() {
   const categories = ["Games", "Cultural", "Education"];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="flex justify-between items-center mb-12">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-8 md:mb-10">
         <div>
-          <h1 className="text-4xl font-bold text-white flex items-center">
-            <LayoutDashboard className="w-10 h-10 mr-4 text-white" />
+          <h1 className="text-3xl md:text-4xl font-bold text-white flex items-center">
+            <LayoutDashboard className="w-8 h-8 md:w-10 md:h-10 mr-3 md:mr-4 text-white" />
             Admin Dashboard
           </h1>
-          <div className="flex space-x-4 mt-4">
+          <div className="flex flex-wrap gap-3 mt-4">
             <button
               onClick={() => setActiveTab("events")}
               className={`px-4 py-2 rounded-lg font-bold transition ${activeTab === "events" ? "bg-white text-black" : "text-gray-400 hover:text-white"}`}
@@ -179,7 +179,7 @@ export default function AdminDashboard() {
               setNewEvent({ name: "", category: "Games", date: "", players_per_team: 1, max_teams: 10, image: "", rules_pdf: null });
               setShowAddModal(true);
             }}
-            className="bg-white hover:bg-gray-200 text-black px-6 py-3 rounded-lg font-bold flex items-center transition shadow-lg"
+            className="w-full sm:w-auto bg-white hover:bg-gray-200 text-black px-6 py-3 rounded-lg font-bold flex items-center justify-center transition shadow-lg"
           >
             <Plus className="w-5 h-5 mr-2" />
             Add New Event
@@ -189,7 +189,7 @@ export default function AdminDashboard() {
 
       {activeTab === "events" ? (
         /* Events List Category-wise */
-        <div className="space-y-12">
+        <div className="space-y-10">
           {categories.map((cat) => (
             <div key={cat}>
               <h2 className="text-2xl font-bold text-white mb-6 border-b border-white/10 pb-2">{cat} Events</h2>
@@ -250,34 +250,34 @@ export default function AdminDashboard() {
             <table className="w-full text-left">
               <thead>
                 <tr className="bg-black/50 text-gold text-xs uppercase tracking-wider">
-                  <th className="px-6 py-4 font-bold">Date</th>
-                  <th className="px-6 py-4 font-bold">Name</th>
-                  <th className="px-6 py-4 font-bold">Mobile</th>
-                  <th className="px-6 py-4 font-bold">Message</th>
-                  <th className="px-6 py-4 font-bold">Actions</th>
+                  <th className="px-4 sm:px-6 py-4 font-bold">Date</th>
+                  <th className="px-4 sm:px-6 py-4 font-bold">Name</th>
+                  <th className="px-4 sm:px-6 py-4 font-bold">Mobile</th>
+                  <th className="px-4 sm:px-6 py-4 font-bold">Message</th>
+                  <th className="px-4 sm:px-6 py-4 font-bold">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
                 {messages.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan={5} className="px-4 sm:px-6 py-12 text-center text-gray-500">
                       No messages received yet.
                     </td>
                   </tr>
                 ) : (
                   messages.map((msg) => (
                     <tr key={msg.id} className="hover:bg-white/5 transition">
-                      <td className="px-6 py-4 text-sm text-gray-400">
+                      <td className="px-4 sm:px-6 py-4 text-sm text-gray-400 whitespace-nowrap">
                         {new Date(msg.created_at).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4 font-bold text-white">{msg.name}</td>
-                      <td className="px-6 py-4 text-gray-400">{msg.mobile}</td>
-                      <td className="px-6 py-4 text-gray-300 max-w-md">
+                      <td className="px-4 sm:px-6 py-4 font-bold text-white whitespace-nowrap">{msg.name}</td>
+                      <td className="px-4 sm:px-6 py-4 text-gray-400 whitespace-nowrap">{msg.mobile}</td>
+                      <td className="px-4 sm:px-6 py-4 text-gray-300 max-w-md min-w-[220px]">
                         <p className="line-clamp-2 hover:line-clamp-none cursor-help transition-all">
                           {msg.message}
                         </p>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 sm:px-6 py-4">
                         <button
                           onClick={() => handleDeleteMessage(msg.id)}
                           className="text-red-500 hover:text-red-400 transition"
@@ -364,7 +364,7 @@ export default function AdminDashboard() {
                 <Plus className="w-8 h-8 rotate-45" />
               </button>
             </div>
-            <div className="p-8 bg-charcoal">
+            <div className="p-5 sm:p-8 bg-charcoal">
             <form onSubmit={handleAddEvent} className="space-y-5">
               <div>
                 <label className="block text-sm font-bold text-gold uppercase tracking-wider mb-2">Event Name</label>
@@ -406,7 +406,7 @@ export default function AdminDashboard() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-gold uppercase tracking-wider mb-2">Players / Team</label>
                   <input
@@ -456,7 +456,7 @@ export default function AdminDashboard() {
                   />
                 </div>
               </div>
-              <div className="flex space-x-3 pt-6">
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 sm:pt-6">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}

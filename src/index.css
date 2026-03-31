@@ -6,3 +6,15 @@
   --color-gold: #948979;
   --color-cream: #DFD0B8;
 }
+
+html,
+body,
+#root {
+  width: 100%;
+  max-width: 100%;
+}
+
+body {
+  margin: 0;
+  overflow-x: hidden;
+}
