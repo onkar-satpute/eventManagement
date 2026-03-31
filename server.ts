@@ -8,6 +8,7 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import multer from "multer";
 import fs from "fs";
+import { createServer } from "node:net";
 
 dotenv.config();
 
@@ -154,7 +155,29 @@ if (!adminExists) {
 
 async function startServer() {
   const app = express();
-  const PORT = Number(process.env.PORT || 3000);
+  const requestedPort = Number(process.env.PORT || 3000);
+
+  const getAvailablePort = async (preferredPort: number) => {
+    const maxAttempts = 10;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const port = preferredPort + attempt;
+      const isFree = await new Promise<boolean>((resolve) => {
+        const tester = createServer();
+        tester.once("error", () => resolve(false));
+        tester.once("listening", () => {
+          tester.close(() => resolve(true));
+        });
+        tester.listen(port, "0.0.0.0");
+      });
+
+      if (isFree) {
+        return port;
+      }
+    }
+    throw new Error(`No available port found starting from ${preferredPort}`);
+  };
+
+  const PORT = await getAvailablePort(requestedPort);
 
   app.use(express.json());
   app.get("/health", (_req, res) => {
@@ -444,7 +467,7 @@ async function startServer() {
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
-    const hmrPort = Number(process.env.HMR_PORT || 24678);
+    const hmrPort = Number(process.env.HMR_PORT || 0);
     const vite = await createViteServer({
       server: {
         middlewareMode: true,
@@ -464,6 +487,9 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
+    if (PORT !== requestedPort) {
+      console.warn(`Port ${requestedPort} is busy. Using port ${PORT} instead.`);
+    }
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }
