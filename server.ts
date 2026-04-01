@@ -36,6 +36,7 @@ db.exec(`
     lastName TEXT NOT NULL,
     mobile TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
+    plain_password TEXT,
     role TEXT DEFAULT 'user'
   );
 
@@ -80,6 +81,25 @@ db.exec(`
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
+
+  CREATE TABLE IF NOT EXISTS activities (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    date TEXT NOT NULL,
+    description TEXT NOT NULL,
+    image TEXT NOT NULL,
+    conducted_by TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS activity_interest (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    activity_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE(activity_id, user_id)
+  );
 `);
 
 // Migration for existing events table if columns missing
@@ -100,6 +120,14 @@ try {
 
 try {
   db.exec("ALTER TABLE events ADD COLUMN rules_pdf TEXT");
+} catch (e) {}
+
+try {
+  db.exec("ALTER TABLE users ADD COLUMN plain_password TEXT");
+} catch (e) {}
+
+try {
+  db.exec("ALTER TABLE activities ADD COLUMN conducted_by TEXT NOT NULL DEFAULT 'Organizer'");
 } catch (e) {}
 
 // Migration for messages table to make user_id optional and remove UNIQUE
@@ -152,11 +180,11 @@ const upload = multer({
 const hashedAdminPassword = bcrypt.hashSync(ADMIN_PASSWORD, 10);
 const existingAdmin: any = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
 if (!existingAdmin) {
-  db.prepare("INSERT INTO users (firstName, lastName, mobile, password, role) VALUES (?, ?, ?, ?, ?)")
-    .run("Admin", "User", ADMIN_MOBILE, hashedAdminPassword, "admin");
+  db.prepare("INSERT INTO users (firstName, lastName, mobile, password, plain_password, role) VALUES (?, ?, ?, ?, ?, ?)")
+    .run("Admin", "User", ADMIN_MOBILE, hashedAdminPassword, ADMIN_PASSWORD, "admin");
 } else {
-  db.prepare("UPDATE users SET mobile = ?, password = ? WHERE id = ?")
-    .run(ADMIN_MOBILE, hashedAdminPassword, existingAdmin.id);
+  db.prepare("UPDATE users SET mobile = ?, password = ?, plain_password = ? WHERE id = ?")
+    .run(ADMIN_MOBILE, hashedAdminPassword, ADMIN_PASSWORD, existingAdmin.id);
 }
 
 async function startServer() {
@@ -220,8 +248,8 @@ async function startServer() {
     const { firstName, lastName, mobile, password } = req.body;
     try {
       const hashedPassword = bcrypt.hashSync(password, 10);
-      const result = db.prepare("INSERT INTO users (firstName, lastName, mobile, password) VALUES (?, ?, ?, ?)")
-        .run(firstName, lastName, mobile, hashedPassword);
+      const result = db.prepare("INSERT INTO users (firstName, lastName, mobile, password, plain_password) VALUES (?, ?, ?, ?, ?)")
+        .run(firstName, lastName, mobile, hashedPassword, password);
       res.json({ id: result.lastInsertRowid });
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -387,6 +415,192 @@ async function startServer() {
       WHERE r.user_id = ?
     `).all((req as any).user.id);
     res.json(events);
+  });
+
+  // Activities API
+  app.get("/api/activities", (req, res) => {
+    const authHeader = req.headers["authorization"];
+    const token = authHeader && authHeader.split(" ")[1];
+    let userId: number | null = null;
+
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        userId = decoded.id;
+      } catch (err) {
+        // Ignore invalid token for public list
+      }
+    }
+
+    const activities = db.prepare(`
+      SELECT
+        a.*,
+        COUNT(ai.id) AS interestedCount
+      FROM activities a
+      LEFT JOIN activity_interest ai ON ai.activity_id = a.id
+      GROUP BY a.id
+      ORDER BY
+        CASE WHEN datetime(a.date) >= datetime('now') THEN 0 ELSE 1 END,
+        datetime(a.date) ASC
+    `).all();
+
+    const activitiesWithInterest = activities.map((activity: any) => {
+      const isInterested = userId
+        ? !!db
+            .prepare("SELECT id FROM activity_interest WHERE activity_id = ? AND user_id = ?")
+            .get(activity.id, userId)
+        : false;
+
+      return {
+        ...activity,
+        interestedCount: Number(activity.interestedCount || 0),
+        isInterested,
+        status: new Date(activity.date) >= new Date() ? "Upcoming" : "Completed",
+      };
+    });
+
+    res.json(activitiesWithInterest);
+  });
+
+  app.get("/api/activities/:id", (req, res) => {
+    const activity = db.prepare("SELECT * FROM activities WHERE id = ?").get(req.params.id) as any;
+    if (!activity) {
+      return res.status(404).json({ error: "Activity not found" });
+    }
+
+    const interestedCount: any = db
+      .prepare("SELECT COUNT(*) AS count FROM activity_interest WHERE activity_id = ?")
+      .get(req.params.id);
+
+    res.json({
+      ...activity,
+      interestedCount: Number(interestedCount.count || 0),
+      status: new Date(activity.date) >= new Date() ? "Upcoming" : "Completed",
+    });
+  });
+
+  app.post("/api/activities/:id/interested", authenticateToken, (req, res) => {
+    const activityId = Number(req.params.id);
+    const userId = (req as any).user.id;
+
+    const activity = db.prepare("SELECT id FROM activities WHERE id = ?").get(activityId);
+    if (!activity) {
+      return res.status(404).json({ error: "Activity not found" });
+    }
+
+    try {
+      db.prepare("INSERT INTO activity_interest (activity_id, user_id) VALUES (?, ?)").run(activityId, userId);
+      const interestedCount: any = db
+        .prepare("SELECT COUNT(*) AS count FROM activity_interest WHERE activity_id = ?")
+        .get(activityId);
+
+      res.json({ success: true, interestedCount: Number(interestedCount.count || 0) });
+    } catch (error: any) {
+      if (error.code === "SQLITE_CONSTRAINT_UNIQUE") {
+        return res.status(400).json({ error: "You already marked as interested" });
+      }
+      res.status(400).json({ error: error.message || "Unable to mark interest" });
+    }
+  });
+
+  // Admin Activities API
+  app.get("/api/admin/activities", authenticateToken, isAdmin, (_req, res) => {
+    const activities = db.prepare(`
+      SELECT
+        a.*,
+        COUNT(ai.id) AS interestedCount
+      FROM activities a
+      LEFT JOIN activity_interest ai ON ai.activity_id = a.id
+      GROUP BY a.id
+      ORDER BY datetime(a.date) DESC
+    `).all();
+
+    res.json(activities.map((activity: any) => ({
+      ...activity,
+      interestedCount: Number(activity.interestedCount || 0),
+    })));
+  });
+
+  app.post("/api/admin/activities", authenticateToken, isAdmin, (req, res) => {
+    const { name, date, description, image, conducted_by } = req.body;
+
+    if (!name || !date || !description || !image || !conducted_by) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+
+    const result = db
+      .prepare("INSERT INTO activities (name, date, description, image, conducted_by) VALUES (?, ?, ?, ?, ?)")
+      .run(name, date, description, image, conducted_by);
+
+    res.json({ id: result.lastInsertRowid });
+  });
+
+  app.put("/api/admin/activities/:id", authenticateToken, isAdmin, (req, res) => {
+    const { name, date, description, image, conducted_by } = req.body;
+
+    if (!name || !date || !description || !image || !conducted_by) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+
+    const existing = db.prepare("SELECT id FROM activities WHERE id = ?").get(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ error: "Activity not found" });
+    }
+
+    db.prepare(
+      "UPDATE activities SET name = ?, date = ?, description = ?, image = ?, conducted_by = ? WHERE id = ?"
+    ).run(name, date, description, image, conducted_by, req.params.id);
+
+    res.json({ success: true });
+  });
+
+  app.delete("/api/admin/activities/:id", authenticateToken, isAdmin, (req, res) => {
+    const existing = db.prepare("SELECT id FROM activities WHERE id = ?").get(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ error: "Activity not found" });
+    }
+
+    db.prepare("DELETE FROM activities WHERE id = ?").run(req.params.id);
+    res.json({ success: true });
+  });
+
+  app.get("/api/admin/activities/:id/interested-users", authenticateToken, isAdmin, (req, res) => {
+    const existing = db.prepare("SELECT id, name FROM activities WHERE id = ?").get(req.params.id) as any;
+    if (!existing) {
+      return res.status(404).json({ error: "Activity not found" });
+    }
+
+    const users = db.prepare(`
+      SELECT
+        u.id,
+        u.firstName,
+        u.lastName,
+        u.mobile,
+        ai.created_at
+      FROM activity_interest ai
+      JOIN users u ON u.id = ai.user_id
+      WHERE ai.activity_id = ?
+      ORDER BY ai.created_at DESC
+    `).all(req.params.id);
+
+    res.json({
+      activityId: Number(req.params.id),
+      activityName: existing.name,
+      interestedCount: users.length,
+      users,
+    });
+  });
+
+  // Admin: View all registered users
+  app.get("/api/admin/users", authenticateToken, isAdmin, (_req, res) => {
+    const users = db.prepare(`
+      SELECT id, firstName, lastName, mobile, COALESCE(plain_password, '') as password, role
+      FROM users
+      WHERE role != 'admin'
+      ORDER BY id DESC
+    `).all();
+
+    res.json(users);
   });
 
   // Admin: View Registered Teams and Players

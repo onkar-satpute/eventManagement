@@ -13,6 +13,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import EventCategory from "./pages/EventCategory";
 import MyEvents from "./pages/MyEvents";
+import Activities from "./pages/Activities";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminLogin from "./pages/AdminLogin";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -29,6 +30,7 @@ export default function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/category/:category" element={<EventCategory />} />
+              <Route path="/activities" element={<Activities />} />
               
               <Route 
                 path="/my-events" 
