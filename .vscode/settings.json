@@ -1,0 +1,9 @@
+{
+  "terminal.integrated.cwd": "${workspaceFolder}",
+  "terminal.integrated.profiles.linux": {
+    "bash": {
+      "path": "/bin/bash",
+      "cwd": "${workspaceFolder}"
+    }
+  }
+}
