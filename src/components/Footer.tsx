@@ -159,7 +159,14 @@ export default function Footer() {
             <div className="mt-6">
               <h4 className="text-lg font-semibold mb-4">Follow Us</h4>
               <div className="flex space-x-4">
-                <Instagram className="w-6 h-6 text-gold hover:text-cream cursor-pointer transition" />
+                <a
+                  href="https://www.instagram.com/samajkalyanhostel_vishrantwadi?igsh=dzhkN2M2em15am11"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Follow us on Instagram"
+                >
+                  <Instagram className="w-6 h-6 text-gold hover:text-cream cursor-pointer transition" />
+                </a>
               </div>
             </div>
           </div>

@@ -34,7 +34,7 @@ export default function Register() {
       <div className="max-w-md w-full bg-gray-dark rounded-2xl shadow-2xl p-6 sm:p-8 border border-gold/10">
         <div className="text-center mb-6 sm:mb-8">
           <img 
-            src="https://raw.githubusercontent.com/shrinivaskumari/bhimjayanti/main/slideimages/logo.png" 
+            src="/logo.png" 
             alt="Logo" 
             className="w-20 h-20 mx-auto mb-4 object-contain brightness-110 contrast-125"
             referrerPolicy="no-referrer"

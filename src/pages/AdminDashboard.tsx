@@ -5,11 +5,13 @@ import { useAuth } from "../lib/AuthContext";
 import { toast } from "sonner";
 import { Plus, Trash2, Users, Download, LayoutDashboard, Calendar, Image as ImageIcon, User as UserIcon, FileText } from "lucide-react";
 import * as XLSX from "xlsx";
+import AdminActivitiesManager from "../components/AdminActivitiesManager";
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<"events" | "messages">("events");
+  const [activeTab, setActiveTab] = useState<"events" | "activities" | "users" | "messages">("events");
   const [events, setEvents] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
+  const [registeredUsers, setRegisteredUsers] = useState<any[]>([]);
   const [selectedEventUsers, setSelectedEventUsers] = useState<any[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
@@ -44,9 +46,19 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchRegisteredUsers = async () => {
+    try {
+      const data = await api.get("/admin/users", token!);
+      setRegisteredUsers(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     fetchEvents();
     fetchMessages();
+    fetchRegisteredUsers();
   }, []);
 
   const handleDeleteMessage = async (id: number) => {
@@ -125,6 +137,41 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteRegistration = async (registrationId: number) => {
+    if (!selectedEventId) return;
+
+    const shouldDelete = window.confirm("Delete this registration entry?");
+    if (!shouldDelete) return;
+
+    try {
+      await api.delete(`/admin/registrations/${registrationId}`, token!);
+      toast.success("Registration deleted");
+      await viewUsers(selectedEventId);
+      fetchEvents();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete registration");
+    }
+  };
+
+  const handleDeleteUser = async (userId: number, userName: string) => {
+    const shouldDelete = window.confirm(`Delete user ${userName}? This will also delete their event registrations.`);
+    if (!shouldDelete) return;
+
+    try {
+      await api.delete(`/admin/users/${userId}`, token!);
+      toast.success("User deleted successfully");
+
+      if (selectedEventId) {
+        await viewUsers(selectedEventId);
+      }
+
+      fetchRegisteredUsers();
+      fetchEvents();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete user");
+    }
+  };
+
   const exportToExcel = (eventId: number, eventName: string) => {
     const exportData: any[] = [];
     
@@ -147,6 +194,20 @@ export default function AdminDashboard() {
     XLSX.writeFile(wb, `${eventName}_registrations.xlsx`);
   };
 
+  const exportUsersToExcel = () => {
+    const exportData = registeredUsers.map((user: any) => ({
+      "First Name": user.firstName,
+      "Last Name": user.lastName,
+      "Mobile Number": user.mobile,
+      Password: user.password || "Not available (registered before update)",
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Registered Users");
+    XLSX.writeFile(wb, "registered_users.xlsx");
+  };
+
   const categories = ["Games", "Cultural", "Education"];
 
   return (
@@ -165,10 +226,22 @@ export default function AdminDashboard() {
               Events
             </button>
             <button
+              onClick={() => setActiveTab("activities")}
+              className={`px-4 py-2 rounded-lg font-bold transition ${activeTab === "activities" ? "bg-white text-black" : "text-gray-400 hover:text-white"}`}
+            >
+              Manage Activities
+            </button>
+            <button
               onClick={() => setActiveTab("messages")}
               className={`px-4 py-2 rounded-lg font-bold transition ${activeTab === "messages" ? "bg-white text-black" : "text-gray-400 hover:text-white"}`}
             >
               Messages ({messages.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("users")}
+              className={`px-4 py-2 rounded-lg font-bold transition ${activeTab === "users" ? "bg-white text-black" : "text-gray-400 hover:text-white"}`}
+            >
+              Registered Users ({registeredUsers.length})
             </button>
           </div>
         </div>
@@ -243,7 +316,9 @@ export default function AdminDashboard() {
             </div>
           ))}
         </div>
-      ) : (
+      ) : activeTab === "activities" ? (
+        <AdminActivitiesManager token={token!} />
+      ) : activeTab === "messages" ? (
         /* Messages List */
         <div className="bg-gray-900 rounded-2xl overflow-hidden border border-white/5">
           <div className="overflow-x-auto">
@@ -292,6 +367,60 @@ export default function AdminDashboard() {
             </table>
           </div>
         </div>
+      ) : (
+        <div className="bg-gray-900 rounded-2xl overflow-hidden border border-white/5">
+          <div className="p-4 sm:p-6 border-b border-white/10 flex justify-between items-center">
+            <h2 className="text-xl font-bold text-white">Registered Users</h2>
+            <button
+              onClick={exportUsersToExcel}
+              disabled={registeredUsers.length === 0}
+              className="bg-cream hover:bg-gold text-charcoal hover:text-white px-5 py-2 rounded-lg font-bold flex items-center transition disabled:opacity-50"
+            >
+              <Download className="w-5 h-5 mr-2" />
+              Export to Excel
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="bg-black/50 text-gold text-xs uppercase tracking-wider">
+                  <th className="px-4 sm:px-6 py-4 font-bold">First Name</th>
+                  <th className="px-4 sm:px-6 py-4 font-bold">Last Name</th>
+                  <th className="px-4 sm:px-6 py-4 font-bold">Mobile</th>
+                  <th className="px-4 sm:px-6 py-4 font-bold">Password</th>
+                  <th className="px-4 sm:px-6 py-4 font-bold">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {registeredUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 sm:px-6 py-12 text-center text-gray-500">
+                      No registered users found.
+                    </td>
+                  </tr>
+                ) : (
+                  registeredUsers.map((user) => (
+                    <tr key={user.id} className="hover:bg-white/5 transition">
+                      <td className="px-4 sm:px-6 py-4 font-bold text-white whitespace-nowrap">{user.firstName}</td>
+                      <td className="px-4 sm:px-6 py-4 font-bold text-white whitespace-nowrap">{user.lastName}</td>
+                      <td className="px-4 sm:px-6 py-4 text-gray-300 whitespace-nowrap">{user.mobile}</td>
+                      <td className="px-4 sm:px-6 py-4 text-gray-400 text-xs break-all">{user.password || "Not available (registered before update)"}</td>
+                      <td className="px-4 sm:px-6 py-4">
+                        <button
+                          onClick={() => handleDeleteUser(user.id, `${user.firstName} ${user.lastName}`)}
+                          className="text-red-500 hover:text-red-400 transition"
+                          title="Delete user"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
 
       {/* Users Modal */}
@@ -311,16 +440,25 @@ export default function AdminDashboard() {
                 <p className="text-center text-gold/50 py-8">No registrations yet.</p>
               ) : (
                 <div className="space-y-6">
-                  {selectedEventUsers.map((team, idx) => (
-                    <div key={idx} className="bg-gray-dark rounded-xl p-4 border border-gold/10">
+                  {selectedEventUsers.map((team) => (
+                    <div key={team.id} className="bg-gray-dark rounded-xl p-4 border border-gold/10">
                       <div className="flex justify-between items-center mb-4 border-b border-gold/10 pb-2">
                         <div>
                           <h4 className="text-lg font-bold text-cream">{team.team_name || "Unnamed Team"}</h4>
                           <p className="text-xs text-gold/70">Captain: {team.firstName} {team.lastName} ({team.captain_mobile})</p>
                         </div>
-                        <span className="text-xs bg-gold/20 text-gold px-2 py-1 rounded">
-                          {team.players.length} Players
-                        </span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs bg-gold/20 text-gold px-2 py-1 rounded">
+                            {team.players.length} Players
+                          </span>
+                          <button
+                            onClick={() => handleDeleteRegistration(team.id)}
+                            className="text-red-500 hover:text-red-400 p-1 transition"
+                            title="Delete registration"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {team.players.map((player: any, pIdx: number) => (
