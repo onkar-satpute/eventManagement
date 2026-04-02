@@ -14,7 +14,8 @@ dotenv.config();
 process.env.DISABLE_HMR ??= "true";
 
 const DB_PATH = process.env.DB_PATH || "events.db";
-const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join("public", "uploads", "rules");
+const UPLOADS_DIR =
+  process.env.UPLOADS_DIR || path.join("public", "uploads", "rules");
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,9 +30,18 @@ if (!fs.existsSync(uploadsDir)) {
 const db = new Database(DB_PATH);
 db.pragma("foreign_keys = ON");
 const JWT_SECRET = process.env.JWT_SECRET || "super-secret-key";
-const ADMIN_MOBILE = "8530469718";
-const ADMIN_PASSWORD = "627123";
+const ADMIN_MOBILE = process.env.ADMIN_MOBILE;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
+if (!ADMIN_MOBILE) {
+  console.error("Error: ADMIN_MOBILE environment variable is not set.");
+  process.exit(1);
+}
+
+if (!ADMIN_PASSWORD) {
+  console.error("Error: ADMIN_PASSWORD environment variable is not set.");
+  process.exit(1);
+}
 // Initialize Database
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
@@ -108,15 +118,23 @@ db.exec(`
 
 // Migration for existing events table if columns missing
 try {
-  db.exec("ALTER TABLE events ADD COLUMN players_per_team INTEGER NOT NULL DEFAULT 1");
+  db.exec(
+    "ALTER TABLE events ADD COLUMN players_per_team INTEGER NOT NULL DEFAULT 1",
+  );
 } catch (e) {}
 try {
-  db.exec("ALTER TABLE events ADD COLUMN max_teams INTEGER NOT NULL DEFAULT 100");
+  db.exec(
+    "ALTER TABLE events ADD COLUMN max_teams INTEGER NOT NULL DEFAULT 100",
+  );
 } catch (e) {}
 try {
-  db.exec("ALTER TABLE events ADD COLUMN max_players INTEGER NOT NULL DEFAULT 0");
+  db.exec(
+    "ALTER TABLE events ADD COLUMN max_players INTEGER NOT NULL DEFAULT 0",
+  );
   // Update existing events to have correct max_players
-  db.exec("UPDATE events SET max_players = players_per_team * max_teams WHERE max_players = 0");
+  db.exec(
+    "UPDATE events SET max_players = players_per_team * max_teams WHERE max_players = 0",
+  );
 } catch (e) {}
 try {
   db.exec("ALTER TABLE registrations ADD COLUMN team_name TEXT");
@@ -131,13 +149,15 @@ try {
 } catch (e) {}
 
 try {
-  db.exec("ALTER TABLE activities ADD COLUMN conducted_by TEXT NOT NULL DEFAULT 'Organizer'");
+  db.exec(
+    "ALTER TABLE activities ADD COLUMN conducted_by TEXT NOT NULL DEFAULT 'Organizer'",
+  );
 } catch (e) {}
 
 // Migration for messages table to make user_id optional and remove UNIQUE
 try {
   const tableInfo: any = db.prepare("PRAGMA table_info(messages)").all();
-  const userIdCol = tableInfo.find((c: any) => c.name === 'user_id');
+  const userIdCol = tableInfo.find((c: any) => c.name === "user_id");
   if (userIdCol && userIdCol.notnull === 1) {
     db.exec("ALTER TABLE messages RENAME TO messages_old");
     db.exec(`
@@ -151,7 +171,9 @@ try {
         FOREIGN KEY (user_id) REFERENCES users(id)
       )
     `);
-    db.exec("INSERT INTO messages (id, user_id, name, mobile, message, created_at) SELECT id, user_id, name, mobile, message, created_at FROM messages_old");
+    db.exec(
+      "INSERT INTO messages (id, user_id, name, mobile, message, created_at) SELECT id, user_id, name, mobile, message, created_at FROM messages_old",
+    );
     db.exec("DROP TABLE messages_old");
   }
 } catch (e) {
@@ -182,13 +204,24 @@ const upload = multer({
 
 // Ensure admin credentials are set to configured values.
 const hashedAdminPassword = bcrypt.hashSync(ADMIN_PASSWORD, 10);
-const existingAdmin: any = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
+const existingAdmin: any = db
+  .prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1")
+  .get();
 if (!existingAdmin) {
-  db.prepare("INSERT INTO users (firstName, lastName, mobile, password, plain_password, role) VALUES (?, ?, ?, ?, ?, ?)")
-    .run("Admin", "User", ADMIN_MOBILE, hashedAdminPassword, ADMIN_PASSWORD, "admin");
+  db.prepare(
+    "INSERT INTO users (firstName, lastName, mobile, password, plain_password, role) VALUES (?, ?, ?, ?, ?, ?)",
+  ).run(
+    "Admin",
+    "User",
+    ADMIN_MOBILE,
+    hashedAdminPassword,
+    ADMIN_PASSWORD,
+    "admin",
+  );
 } else {
-  db.prepare("UPDATE users SET mobile = ?, password = ?, plain_password = ? WHERE id = ?")
-    .run(ADMIN_MOBILE, hashedAdminPassword, ADMIN_PASSWORD, existingAdmin.id);
+  db.prepare(
+    "UPDATE users SET mobile = ?, password = ?, plain_password = ? WHERE id = ?",
+  ).run(ADMIN_MOBILE, hashedAdminPassword, ADMIN_PASSWORD, existingAdmin.id);
 }
 
 async function startServer() {
@@ -223,16 +256,23 @@ async function startServer() {
   });
 
   // Serve uploaded files with headers that allow framing in the preview environment
-  app.use("/uploads", (req, res, next) => {
-    res.setHeader("X-Frame-Options", "SAMEORIGIN");
-    res.setHeader("Content-Security-Policy", "frame-ancestors 'self' https://ai.studio.google.com https://*.run.app");
-    next();
-  }, express.static(path.join(process.cwd(), "public", "uploads")));
+  app.use(
+    "/uploads",
+    (req, res, next) => {
+      res.setHeader("X-Frame-Options", "SAMEORIGIN");
+      res.setHeader(
+        "Content-Security-Policy",
+        "frame-ancestors 'self' https://ai.studio.google.com https://*.run.app",
+      );
+      next();
+    },
+    express.static(path.join(process.cwd(), "public", "uploads")),
+  );
 
   // Auth Middleware
   const authenticateToken = (req: any, res: any, next: any) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    const authHeader = req.headers["authorization"];
+    const token = authHeader && authHeader.split(" ")[1];
     if (!token) return res.sendStatus(401);
 
     jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
@@ -243,7 +283,7 @@ async function startServer() {
   };
 
   const isAdmin = (req: any, res: any, next: any) => {
-    if ((req as any).user.role !== 'admin') return res.sendStatus(403);
+    if ((req as any).user.role !== "admin") return res.sendStatus(403);
     next();
   };
 
@@ -252,7 +292,10 @@ async function startServer() {
     const { firstName, lastName, mobile, password } = req.body;
     try {
       const hashedPassword = bcrypt.hashSync(password, 10);
-      const result = db.prepare("INSERT INTO users (firstName, lastName, mobile, password, plain_password) VALUES (?, ?, ?, ?, ?)")
+      const result = db
+        .prepare(
+          "INSERT INTO users (firstName, lastName, mobile, password, plain_password) VALUES (?, ?, ?, ?, ?)",
+        )
         .run(firstName, lastName, mobile, hashedPassword, password);
       res.json({ id: result.lastInsertRowid });
     } catch (error: any) {
@@ -262,12 +305,25 @@ async function startServer() {
 
   app.post("/api/auth/login", (req, res) => {
     const { mobile, password } = req.body;
-    const user: any = db.prepare("SELECT * FROM users WHERE mobile = ?").get(mobile);
+    const user: any = db
+      .prepare("SELECT * FROM users WHERE mobile = ?")
+      .get(mobile);
     if (!user || !bcrypt.compareSync(password, user.password)) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
-    const token = jwt.sign({ id: user.id, role: user.role, firstName: user.firstName }, JWT_SECRET);
-    res.json({ token, user: { id: user.id, firstName: user.firstName, lastName: user.lastName, role: user.role } });
+    const token = jwt.sign(
+      { id: user.id, role: user.role, firstName: user.firstName },
+      JWT_SECRET,
+    );
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+      },
+    });
   });
 
   // Events API
@@ -288,57 +344,102 @@ async function startServer() {
 
     let events;
     if (category) {
-      events = db.prepare("SELECT * FROM events WHERE category = ?").all(category);
+      events = db
+        .prepare("SELECT * FROM events WHERE category = ?")
+        .all(category);
     } else {
       events = db.prepare("SELECT * FROM events").all();
     }
-    
+
     // Add registration count and isRegistered flag to each event
     const eventsWithCount = events.map((event: any) => {
-      const count: any = db.prepare("SELECT COUNT(*) as count FROM registrations WHERE event_id = ?").get(event.id);
+      const count: any = db
+        .prepare(
+          "SELECT COUNT(*) as count FROM registrations WHERE event_id = ?",
+        )
+        .get(event.id);
       let isRegistered = false;
       if (userId) {
-        const reg = db.prepare("SELECT id FROM registrations WHERE user_id = ? AND event_id = ?").get(userId, event.id);
+        const reg = db
+          .prepare(
+            "SELECT id FROM registrations WHERE user_id = ? AND event_id = ?",
+          )
+          .get(userId, event.id);
         isRegistered = !!reg;
       }
       return { ...event, registrationCount: count.count, isRegistered };
     });
-    
+
     res.json(eventsWithCount);
   });
 
-  app.post("/api/events", authenticateToken, isAdmin, upload.single('rules_pdf'), (req, res) => {
-    const { name, category, date, players_per_team, max_teams, image } = req.body;
-    const rules_pdf = req.file ? `/uploads/rules/${req.file.filename}` : null;
-    const max_players = parseInt(players_per_team) * parseInt(max_teams);
-    const result = db.prepare("INSERT INTO events (name, category, date, players_per_team, max_teams, max_players, image, rules_pdf) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-      .run(name, category, date, parseInt(players_per_team), parseInt(max_teams), max_players, image, rules_pdf);
-    res.json({ id: result.lastInsertRowid });
-  });
+  app.post(
+    "/api/events",
+    authenticateToken,
+    isAdmin,
+    upload.single("rules_pdf"),
+    (req, res) => {
+      const { name, category, date, players_per_team, max_teams, image } =
+        req.body;
+      const rules_pdf = req.file ? `/uploads/rules/${req.file.filename}` : null;
+      const max_players = parseInt(players_per_team) * parseInt(max_teams);
+      const result = db
+        .prepare(
+          "INSERT INTO events (name, category, date, players_per_team, max_teams, max_players, image, rules_pdf) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        )
+        .run(
+          name,
+          category,
+          date,
+          parseInt(players_per_team),
+          parseInt(max_teams),
+          max_players,
+          image,
+          rules_pdf,
+        );
+      res.json({ id: result.lastInsertRowid });
+    },
+  );
 
-  app.put("/api/events/:id", authenticateToken, isAdmin, upload.single('rules_pdf'), (req, res) => {
-    const { name, category, date, players_per_team, max_teams, image } = req.body;
-    const eventId = req.params.id;
-    const max_players = parseInt(players_per_team) * parseInt(max_teams);
-    
-    try {
-      let query = "UPDATE events SET name = ?, category = ?, date = ?, players_per_team = ?, max_teams = ?, max_players = ?, image = ?";
-      const params = [name, category, date, parseInt(players_per_team), parseInt(max_teams), max_players, image];
+  app.put(
+    "/api/events/:id",
+    authenticateToken,
+    isAdmin,
+    upload.single("rules_pdf"),
+    (req, res) => {
+      const { name, category, date, players_per_team, max_teams, image } =
+        req.body;
+      const eventId = req.params.id;
+      const max_players = parseInt(players_per_team) * parseInt(max_teams);
 
-      if (req.file) {
-        query += ", rules_pdf = ?";
-        params.push(`/uploads/rules/${req.file.filename}`);
+      try {
+        let query =
+          "UPDATE events SET name = ?, category = ?, date = ?, players_per_team = ?, max_teams = ?, max_players = ?, image = ?";
+        const params = [
+          name,
+          category,
+          date,
+          parseInt(players_per_team),
+          parseInt(max_teams),
+          max_players,
+          image,
+        ];
+
+        if (req.file) {
+          query += ", rules_pdf = ?";
+          params.push(`/uploads/rules/${req.file.filename}`);
+        }
+
+        query += " WHERE id = ?";
+        params.push(eventId);
+
+        db.prepare(query).run(...params);
+        res.json({ success: true });
+      } catch (error: any) {
+        res.status(400).json({ error: error.message });
       }
-
-      query += " WHERE id = ?";
-      params.push(eventId);
-
-      db.prepare(query).run(...params);
-      res.json({ success: true });
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  });
+    },
+  );
 
   app.delete("/api/events/:id", authenticateToken, isAdmin, (req, res) => {
     const eventId = req.params.id;
@@ -353,71 +454,121 @@ async function startServer() {
   app.post("/api/registrations", authenticateToken, (req, res) => {
     const { event_id, team_name, players } = req.body;
     const user_id = (req as any).user.id;
-    
+
     try {
-      const event: any = db.prepare("SELECT * FROM events WHERE id = ?").get(event_id);
+      const event: any = db
+        .prepare("SELECT * FROM events WHERE id = ?")
+        .get(event_id);
       if (!event) return res.status(404).json({ error: "Event not found" });
 
       // Check registration deadline (1 day before event at 12:00 AM)
       const eventDate = new Date(event.date);
-      const deadline = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate() - 1, 0, 0, 0);
+      const deadline = new Date(
+        eventDate.getFullYear(),
+        eventDate.getMonth(),
+        eventDate.getDate() - 1,
+        0,
+        0,
+        0,
+      );
       const now = new Date();
-      
+
       if (now >= deadline) {
-        return res.status(400).json({ error: "Registration is closed (deadline passed)" });
+        return res
+          .status(400)
+          .json({ error: "Registration is closed (deadline passed)" });
       }
 
       // Check if full
-      const count: any = db.prepare("SELECT COUNT(*) as count FROM registrations WHERE event_id = ?").get(event_id);
-      
+      const count: any = db
+        .prepare(
+          "SELECT COUNT(*) as count FROM registrations WHERE event_id = ?",
+        )
+        .get(event_id);
+
       if (count.count >= event.max_teams) {
         return res.status(400).json({ error: "All slots are full" });
       }
 
       // Check if user already registered for this event
-      const existing = db.prepare("SELECT * FROM registrations WHERE user_id = ? AND event_id = ?").get(user_id, event_id);
+      const existing = db
+        .prepare(
+          "SELECT * FROM registrations WHERE user_id = ? AND event_id = ?",
+        )
+        .get(user_id, event_id);
       if (existing) {
-        return res.status(400).json({ error: "You have already registered for this event" });
+        return res
+          .status(400)
+          .json({ error: "You have already registered for this event" });
       }
 
       // Transaction for registration and players
-      const insertRegistration = db.prepare("INSERT INTO registrations (user_id, event_id, team_name) VALUES (?, ?, ?)");
-      const insertPlayer = db.prepare("INSERT INTO players (registration_id, player_name, mobile_number) VALUES (?, ?, ?)");
+      const insertRegistration = db.prepare(
+        "INSERT INTO registrations (user_id, event_id, team_name) VALUES (?, ?, ?)",
+      );
+      const insertPlayer = db.prepare(
+        "INSERT INTO players (registration_id, player_name, mobile_number) VALUES (?, ?, ?)",
+      );
 
       const transaction = db.transaction((regData: any, playersData: any[]) => {
-        const result = insertRegistration.run(regData.user_id, regData.event_id, regData.team_name);
+        const result = insertRegistration.run(
+          regData.user_id,
+          regData.event_id,
+          regData.team_name,
+        );
         const registrationId = result.lastInsertRowid;
-        
+
         // If single player event and no players provided, use user details
-        if (event.players_per_team === 1 && (!playersData || playersData.length === 0)) {
-          const user: any = db.prepare("SELECT firstName, lastName, mobile FROM users WHERE id = ?").get(user_id);
+        if (
+          event.players_per_team === 1 &&
+          (!playersData || playersData.length === 0)
+        ) {
+          const user: any = db
+            .prepare(
+              "SELECT firstName, lastName, mobile FROM users WHERE id = ?",
+            )
+            .get(user_id);
           if (user) {
-            insertPlayer.run(registrationId, `${user.firstName} ${user.lastName}`, user.mobile);
+            insertPlayer.run(
+              registrationId,
+              `${user.firstName} ${user.lastName}`,
+              user.mobile,
+            );
           }
         } else if (playersData && Array.isArray(playersData)) {
           for (const player of playersData) {
-            insertPlayer.run(registrationId, player.player_name, player.mobile_number);
+            insertPlayer.run(
+              registrationId,
+              player.player_name,
+              player.mobile_number,
+            );
           }
         }
         return registrationId;
       });
 
       transaction({ user_id, event_id, team_name }, players || []);
-      
+
       res.json({ success: true });
     } catch (error: any) {
       console.error("Registration Error:", error);
-      res.status(400).json({ error: error.message || "An error occurred during registration" });
+      res.status(400).json({
+        error: error.message || "An error occurred during registration",
+      });
     }
   });
 
   app.get("/api/my-events", authenticateToken, (req, res) => {
-    const events = db.prepare(`
+    const events = db
+      .prepare(
+        `
       SELECT e.*, r.team_name, (SELECT COUNT(*) FROM players p WHERE p.registration_id = r.id) as player_count
       FROM events e
       JOIN registrations r ON e.id = r.event_id
       WHERE r.user_id = ?
-    `).all((req as any).user.id);
+    `,
+      )
+      .all((req as any).user.id);
     res.json(events);
   });
 
@@ -436,7 +587,9 @@ async function startServer() {
       }
     }
 
-    const activities = db.prepare(`
+    const activities = db
+      .prepare(
+        `
       SELECT
         a.*,
         COUNT(ai.id) AS interestedCount
@@ -446,12 +599,16 @@ async function startServer() {
       ORDER BY
         CASE WHEN datetime(a.date) >= datetime('now') THEN 0 ELSE 1 END,
         datetime(a.date) ASC
-    `).all();
+    `,
+      )
+      .all();
 
     const activitiesWithInterest = activities.map((activity: any) => {
       const isInterested = userId
         ? !!db
-            .prepare("SELECT id FROM activity_interest WHERE activity_id = ? AND user_id = ?")
+            .prepare(
+              "SELECT id FROM activity_interest WHERE activity_id = ? AND user_id = ?",
+            )
             .get(activity.id, userId)
         : false;
 
@@ -459,7 +616,8 @@ async function startServer() {
         ...activity,
         interestedCount: Number(activity.interestedCount || 0),
         isInterested,
-        status: new Date(activity.date) >= new Date() ? "Upcoming" : "Completed",
+        status:
+          new Date(activity.date) >= new Date() ? "Upcoming" : "Completed",
       };
     });
 
@@ -467,13 +625,17 @@ async function startServer() {
   });
 
   app.get("/api/activities/:id", (req, res) => {
-    const activity = db.prepare("SELECT * FROM activities WHERE id = ?").get(req.params.id) as any;
+    const activity = db
+      .prepare("SELECT * FROM activities WHERE id = ?")
+      .get(req.params.id) as any;
     if (!activity) {
       return res.status(404).json({ error: "Activity not found" });
     }
 
     const interestedCount: any = db
-      .prepare("SELECT COUNT(*) AS count FROM activity_interest WHERE activity_id = ?")
+      .prepare(
+        "SELECT COUNT(*) AS count FROM activity_interest WHERE activity_id = ?",
+      )
       .get(req.params.id);
 
     res.json({
@@ -487,29 +649,44 @@ async function startServer() {
     const activityId = Number(req.params.id);
     const userId = (req as any).user.id;
 
-    const activity = db.prepare("SELECT id FROM activities WHERE id = ?").get(activityId);
+    const activity = db
+      .prepare("SELECT id FROM activities WHERE id = ?")
+      .get(activityId);
     if (!activity) {
       return res.status(404).json({ error: "Activity not found" });
     }
 
     try {
-      db.prepare("INSERT INTO activity_interest (activity_id, user_id) VALUES (?, ?)").run(activityId, userId);
+      db.prepare(
+        "INSERT INTO activity_interest (activity_id, user_id) VALUES (?, ?)",
+      ).run(activityId, userId);
       const interestedCount: any = db
-        .prepare("SELECT COUNT(*) AS count FROM activity_interest WHERE activity_id = ?")
+        .prepare(
+          "SELECT COUNT(*) AS count FROM activity_interest WHERE activity_id = ?",
+        )
         .get(activityId);
 
-      res.json({ success: true, interestedCount: Number(interestedCount.count || 0) });
+      res.json({
+        success: true,
+        interestedCount: Number(interestedCount.count || 0),
+      });
     } catch (error: any) {
       if (error.code === "SQLITE_CONSTRAINT_UNIQUE") {
-        return res.status(400).json({ error: "You already marked as interested" });
+        return res
+          .status(400)
+          .json({ error: "You already marked as interested" });
       }
-      res.status(400).json({ error: error.message || "Unable to mark interest" });
+      res
+        .status(400)
+        .json({ error: error.message || "Unable to mark interest" });
     }
   });
 
   // Admin Activities API
   app.get("/api/admin/activities", authenticateToken, isAdmin, (_req, res) => {
-    const activities = db.prepare(`
+    const activities = db
+      .prepare(
+        `
       SELECT
         a.*,
         COUNT(ai.id) AS interestedCount
@@ -517,12 +694,16 @@ async function startServer() {
       LEFT JOIN activity_interest ai ON ai.activity_id = a.id
       GROUP BY a.id
       ORDER BY datetime(a.date) DESC
-    `).all();
+    `,
+      )
+      .all();
 
-    res.json(activities.map((activity: any) => ({
-      ...activity,
-      interestedCount: Number(activity.interestedCount || 0),
-    })));
+    res.json(
+      activities.map((activity: any) => ({
+        ...activity,
+        interestedCount: Number(activity.interestedCount || 0),
+      })),
+    );
   });
 
   app.post("/api/admin/activities", authenticateToken, isAdmin, (req, res) => {
@@ -533,48 +714,72 @@ async function startServer() {
     }
 
     const result = db
-      .prepare("INSERT INTO activities (name, date, description, image, conducted_by) VALUES (?, ?, ?, ?, ?)")
+      .prepare(
+        "INSERT INTO activities (name, date, description, image, conducted_by) VALUES (?, ?, ?, ?, ?)",
+      )
       .run(name, date, description, image, conducted_by);
 
     res.json({ id: result.lastInsertRowid });
   });
 
-  app.put("/api/admin/activities/:id", authenticateToken, isAdmin, (req, res) => {
-    const { name, date, description, image, conducted_by } = req.body;
+  app.put(
+    "/api/admin/activities/:id",
+    authenticateToken,
+    isAdmin,
+    (req, res) => {
+      const { name, date, description, image, conducted_by } = req.body;
 
-    if (!name || !date || !description || !image || !conducted_by) {
-      return res.status(400).json({ error: "All fields are required" });
-    }
+      if (!name || !date || !description || !image || !conducted_by) {
+        return res.status(400).json({ error: "All fields are required" });
+      }
 
-    const existing = db.prepare("SELECT id FROM activities WHERE id = ?").get(req.params.id);
-    if (!existing) {
-      return res.status(404).json({ error: "Activity not found" });
-    }
+      const existing = db
+        .prepare("SELECT id FROM activities WHERE id = ?")
+        .get(req.params.id);
+      if (!existing) {
+        return res.status(404).json({ error: "Activity not found" });
+      }
 
-    db.prepare(
-      "UPDATE activities SET name = ?, date = ?, description = ?, image = ?, conducted_by = ? WHERE id = ?"
-    ).run(name, date, description, image, conducted_by, req.params.id);
+      db.prepare(
+        "UPDATE activities SET name = ?, date = ?, description = ?, image = ?, conducted_by = ? WHERE id = ?",
+      ).run(name, date, description, image, conducted_by, req.params.id);
 
-    res.json({ success: true });
-  });
+      res.json({ success: true });
+    },
+  );
 
-  app.delete("/api/admin/activities/:id", authenticateToken, isAdmin, (req, res) => {
-    const existing = db.prepare("SELECT id FROM activities WHERE id = ?").get(req.params.id);
-    if (!existing) {
-      return res.status(404).json({ error: "Activity not found" });
-    }
+  app.delete(
+    "/api/admin/activities/:id",
+    authenticateToken,
+    isAdmin,
+    (req, res) => {
+      const existing = db
+        .prepare("SELECT id FROM activities WHERE id = ?")
+        .get(req.params.id);
+      if (!existing) {
+        return res.status(404).json({ error: "Activity not found" });
+      }
 
-    db.prepare("DELETE FROM activities WHERE id = ?").run(req.params.id);
-    res.json({ success: true });
-  });
+      db.prepare("DELETE FROM activities WHERE id = ?").run(req.params.id);
+      res.json({ success: true });
+    },
+  );
 
-  app.get("/api/admin/activities/:id/interested-users", authenticateToken, isAdmin, (req, res) => {
-    const existing = db.prepare("SELECT id, name FROM activities WHERE id = ?").get(req.params.id) as any;
-    if (!existing) {
-      return res.status(404).json({ error: "Activity not found" });
-    }
+  app.get(
+    "/api/admin/activities/:id/interested-users",
+    authenticateToken,
+    isAdmin,
+    (req, res) => {
+      const existing = db
+        .prepare("SELECT id, name FROM activities WHERE id = ?")
+        .get(req.params.id) as any;
+      if (!existing) {
+        return res.status(404).json({ error: "Activity not found" });
+      }
 
-    const users = db.prepare(`
+      const users = db
+        .prepare(
+          `
       SELECT
         u.id,
         u.firstName,
@@ -585,24 +790,31 @@ async function startServer() {
       JOIN users u ON u.id = ai.user_id
       WHERE ai.activity_id = ?
       ORDER BY ai.created_at DESC
-    `).all(req.params.id);
+    `,
+        )
+        .all(req.params.id);
 
-    res.json({
-      activityId: Number(req.params.id),
-      activityName: existing.name,
-      interestedCount: users.length,
-      users,
-    });
-  });
+      res.json({
+        activityId: Number(req.params.id),
+        activityName: existing.name,
+        interestedCount: users.length,
+        users,
+      });
+    },
+  );
 
   // Admin: View all registered users
   app.get("/api/admin/users", authenticateToken, isAdmin, (_req, res) => {
-    const users = db.prepare(`
+    const users = db
+      .prepare(
+        `
       SELECT id, firstName, lastName, mobile, COALESCE(plain_password, '') as password, role
       FROM users
       WHERE role != 'admin'
       ORDER BY id DESC
-    `).all();
+    `,
+      )
+      .all();
 
     res.json(users);
   });
@@ -628,12 +840,16 @@ async function startServer() {
     }
 
     if (requestedBy === userId) {
-      return res.status(400).json({ error: "You cannot delete your own account" });
+      return res
+        .status(400)
+        .json({ error: "You cannot delete your own account" });
     }
 
     const deleteUserTx = db.transaction((id: number) => {
       // Keep contact message history but detach it from deleted user.
-      db.prepare("UPDATE messages SET user_id = NULL WHERE user_id = ?").run(id);
+      db.prepare("UPDATE messages SET user_id = NULL WHERE user_id = ?").run(
+        id,
+      );
       // Remove registrations first; players are deleted via ON DELETE CASCADE.
       db.prepare("DELETE FROM registrations WHERE user_id = ?").run(id);
       db.prepare("DELETE FROM users WHERE id = ?").run(id);
@@ -648,61 +864,93 @@ async function startServer() {
   });
 
   // Admin: View Registered Teams and Players
-  app.get("/api/admin/registrations/:eventId", authenticateToken, isAdmin, (req, res) => {
-    const registrations = db.prepare(`
+  app.get(
+    "/api/admin/registrations/:eventId",
+    authenticateToken,
+    isAdmin,
+    (req, res) => {
+      const registrations = db
+        .prepare(
+          `
       SELECT r.id, r.team_name, u.firstName, u.lastName, u.mobile as captain_mobile
       FROM registrations r
       JOIN users u ON r.user_id = u.id
       WHERE r.event_id = ?
-    `).all(req.params.eventId);
+    `,
+        )
+        .all(req.params.eventId);
 
-    const registrationsWithPlayers = registrations.map((reg: any) => {
-      const players = db.prepare("SELECT * FROM players WHERE registration_id = ?").all(reg.id);
-      return { ...reg, players };
-    });
+      const registrationsWithPlayers = registrations.map((reg: any) => {
+        const players = db
+          .prepare("SELECT * FROM players WHERE registration_id = ?")
+          .all(reg.id);
+        return { ...reg, players };
+      });
 
-    res.json(registrationsWithPlayers);
-  });
+      res.json(registrationsWithPlayers);
+    },
+  );
 
-  app.delete("/api/admin/registrations/:registrationId", authenticateToken, isAdmin, (req, res) => {
-    const registrationId = req.params.registrationId;
-    const existing = db.prepare("SELECT id FROM registrations WHERE id = ?").get(registrationId);
+  app.delete(
+    "/api/admin/registrations/:registrationId",
+    authenticateToken,
+    isAdmin,
+    (req, res) => {
+      const registrationId = req.params.registrationId;
+      const existing = db
+        .prepare("SELECT id FROM registrations WHERE id = ?")
+        .get(registrationId);
 
-    if (!existing) {
-      return res.status(404).json({ error: "Registration not found" });
-    }
+      if (!existing) {
+        return res.status(404).json({ error: "Registration not found" });
+      }
 
-    db.prepare("DELETE FROM registrations WHERE id = ?").run(registrationId);
-    res.json({ success: true });
-  });
+      db.prepare("DELETE FROM registrations WHERE id = ?").run(registrationId);
+      res.json({ success: true });
+    },
+  );
 
   // Admin: Export to CSV
-  app.get("/api/admin/export/:eventId", authenticateToken, isAdmin, (req, res) => {
-    const event: any = db.prepare("SELECT name FROM events WHERE id = ?").get(req.params.eventId);
-    if (!event) return res.status(404).send("Event not found");
+  app.get(
+    "/api/admin/export/:eventId",
+    authenticateToken,
+    isAdmin,
+    (req, res) => {
+      const event: any = db
+        .prepare("SELECT name FROM events WHERE id = ?")
+        .get(req.params.eventId);
+      if (!event) return res.status(404).send("Event not found");
 
-    const data = db.prepare(`
+      const data = db
+        .prepare(
+          `
       SELECT r.team_name, p.player_name, p.mobile_number
       FROM registrations r
       JOIN players p ON r.id = p.registration_id
       WHERE r.event_id = ?
-    `).all(req.params.eventId);
+    `,
+        )
+        .all(req.params.eventId);
 
-    let csv = "Event Name,Team Name,Player Name,Mobile Number\n";
-    data.forEach((row: any) => {
-      csv += `"${event.name}","${row.team_name || ''}","${row.player_name}","${row.mobile_number}"\n`;
-    });
+      let csv = "Event Name,Team Name,Player Name,Mobile Number\n";
+      data.forEach((row: any) => {
+        csv += `"${event.name}","${row.team_name || ""}","${row.player_name}","${row.mobile_number}"\n`;
+      });
 
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename=event_${req.params.eventId}_registrations.csv`);
-    res.send(csv);
-  });
-  
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename=event_${req.params.eventId}_registrations.csv`,
+      );
+      res.send(csv);
+    },
+  );
+
   // Messages API
   app.post("/api/messages", (req, res) => {
     const { name, mobile, message } = req.body;
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    const authHeader = req.headers["authorization"];
+    const token = authHeader && authHeader.split(" ")[1];
     let user_id = null;
 
     if (token) {
@@ -713,18 +961,24 @@ async function startServer() {
         // Ignore invalid token
       }
     }
-    
+
     try {
       if (user_id) {
         // Check if user already sent a message (optional, maybe we want to allow multiple now)
-        const existing = db.prepare("SELECT id FROM messages WHERE user_id = ?").get(user_id);
+        const existing = db
+          .prepare("SELECT id FROM messages WHERE user_id = ?")
+          .get(user_id);
         if (existing) {
-          return res.status(400).json({ error: "You have already sent a message. Only one message per profile is allowed." });
+          return res.status(400).json({
+            error:
+              "You have already sent a message. Only one message per profile is allowed.",
+          });
         }
       }
-      
-      db.prepare("INSERT INTO messages (user_id, name, mobile, message) VALUES (?, ?, ?, ?)")
-        .run(user_id, name, mobile, message);
+
+      db.prepare(
+        "INSERT INTO messages (user_id, name, mobile, message) VALUES (?, ?, ?, ?)",
+      ).run(user_id, name, mobile, message);
       res.json({ success: true });
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -732,14 +986,21 @@ async function startServer() {
   });
 
   app.get("/api/admin/messages", authenticateToken, isAdmin, (req, res) => {
-    const messages = db.prepare("SELECT * FROM messages ORDER BY created_at DESC").all();
+    const messages = db
+      .prepare("SELECT * FROM messages ORDER BY created_at DESC")
+      .all();
     res.json(messages);
   });
-  
-  app.delete("/api/admin/messages/:id", authenticateToken, isAdmin, (req, res) => {
-    db.prepare("DELETE FROM messages WHERE id = ?").run(req.params.id);
-    res.json({ success: true });
-  });
+
+  app.delete(
+    "/api/admin/messages/:id",
+    authenticateToken,
+    isAdmin,
+    (req, res) => {
+      db.prepare("DELETE FROM messages WHERE id = ?").run(req.params.id);
+      res.json({ success: true });
+    },
+  );
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
@@ -752,16 +1013,18 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
+    const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
     });
   }
 
   app.listen(PORT, "0.0.0.0", () => {
     if (PORT !== requestedPort) {
-      console.warn(`Port ${requestedPort} is busy. Using port ${PORT} instead.`);
+      console.warn(
+        `Port ${requestedPort} is busy. Using port ${PORT} instead.`,
+      );
     }
     console.log(`Server running on http://localhost:${PORT}`);
   });
