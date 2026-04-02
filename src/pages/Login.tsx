@@ -6,7 +6,9 @@ import { useAuth } from "../lib/AuthContext";
 import { toast } from "sonner";
 import { LogIn, Phone, Lock } from "lucide-react";
 
-export default function Login() {
+const isValidMobile = (mobile: string) => /^\d{10}$/.test(mobile.trim());
+
+export default function Login () {
   const [mobile, setMobile] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -15,9 +17,16 @@ export default function Login() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    const sanitizedMobile = mobile.replace(/\D/g, "");
+
+    if (!isValidMobile(sanitizedMobile)) {
+      toast.error("Mobile number must be exactly 10 digits.");
+      return;
+    }
+
     setLoading(true);
     try {
-      const data = await api.post("/auth/login", { mobile, password });
+      const data = await api.post("/auth/login", { mobile: sanitizedMobile, password });
       login(data.token, data.user);
       toast.success("Welcome back!");
       if (data.user.role === 'admin') {
@@ -52,10 +61,13 @@ export default function Login() {
             <div className="relative">
               <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gold/50" />
               <input
-                type="text"
+                type="tel"
+                inputMode="numeric"
+                pattern="[0-9]{10}"
+                maxLength={10}
                 required
                 value={mobile}
-                onChange={(e) => setMobile(e.target.value)}
+                onChange={(e) => setMobile(e.target.value.replace(/\D/g, ""))}
                 className="w-full pl-10 pr-4 py-2 bg-charcoal border border-gold/20 rounded-lg focus:ring-2 focus:ring-gold outline-none transition text-cream placeholder-gold/30"
                 placeholder="Enter mobile number"
               />

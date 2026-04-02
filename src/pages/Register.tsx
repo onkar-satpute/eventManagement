@@ -5,6 +5,8 @@ import { api } from "../lib/api";
 import { toast } from "sonner";
 import { UserPlus, User, Phone, Lock } from "lucide-react";
 
+const isValidMobile = (mobile: string) => /^\d{10}$/.test(mobile.trim());
+
 export default function Register() {
   const [formData, setFormData] = useState({
     firstName: "",
@@ -17,9 +19,16 @@ export default function Register() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    const sanitizedMobile = formData.mobile.replace(/\D/g, "");
+
+    if (!isValidMobile(sanitizedMobile)) {
+      toast.error("Mobile number must be exactly 10 digits.");
+      return;
+    }
+
     setLoading(true);
     try {
-      await api.post("/auth/register", formData);
+      await api.post("/auth/register", { ...formData, mobile: sanitizedMobile });
       toast.success("Registration successful! Please login.");
       navigate("/login");
     } catch (err: any) {
@@ -80,10 +89,13 @@ export default function Register() {
             <div className="relative">
               <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gold/50" />
               <input
-                type="text"
+                type="tel"
+                inputMode="numeric"
+                pattern="[0-9]{10}"
+                maxLength={10}
                 required
                 value={formData.mobile}
-                onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, mobile: e.target.value.replace(/\D/g, "") })}
                 className="w-full pl-10 pr-4 py-2 bg-charcoal border border-gold/20 rounded-lg focus:ring-2 focus:ring-gold outline-none text-cream placeholder-gold/30"
                 placeholder="Enter mobile number"
               />

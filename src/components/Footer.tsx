@@ -26,6 +26,9 @@ export default function Footer() {
     "tanish_sidam-treasurer.jpeg",
     "yash_sawarkar-culturalhead.jpeg",
     "yuvraj_gaikwad-sportHead.jpeg",
+    "Ram_Waghmare-Executive_Chairman.jpeg",
+    "Shrinivas_kumari-Educational_Event_Organizer.jpeg",
+    "mithun_ganachari-Advisor.jpeg",
   ];
 
   const formatTitleCase = (value: string) =>
@@ -52,6 +55,8 @@ export default function Footer() {
       "social media head": "Social Media Head",
       culturalhead: "Cultural Head",
       "cultural head": "Cultural Head",
+      educationaleventorganizer: "Educational Event Organizer",
+      "educational event organizer": "Educational Event Organizer",
       sporthead: "Sport Head",
       "sport head": "Sport Head",
       jointsecretary: "Joint Secretary",
@@ -82,6 +87,7 @@ export default function Footer() {
     "Secretary",
     "Joint Secretary",
     "Cultural Head",
+    "Educational Event Organizer",
     "Sport Head",
     "Technical Head",
     "Social Media Head",
